@@ -210,20 +210,24 @@ class OpenAIClient:
             'gpt-4': 128000,
             'gpt-35-turbo-16k': 16384,
         }
-        self.openai_api_key = os.environ["OPENAI_API_KEY"]
-        self.azure_api_id = os.environ["AZURE_API_ID"]
-        self.azure_api_secret = os.environ["AZURE_API_SECRET"]
-        self.azure_api_endpoint = os.environ["AZURE_API_ENDPOINT"]
+        self.openai_base_url = os.getenv("OPENAI_BASE_URL")
+        self.openai_api_key = os.getenv("OPENAI_API_KEY")
+        self.azure_api_id = os.getenv("AZURE_API_ID")
+        self.azure_api_secret = os.getenv("AZURE_API_SECRET")
+        self.azure_api_endpoint = os.getenv("AZURE_API_ENDPOINT")
         self.model_name = model_name    
             
         # Azure
-        if self.azure_api_id and self.azure_api_secret:
+        if not (self.openai_base_url or self.openai_api_key) and self.azure_api_id and self.azure_api_secret:
             if 'gpt-3.5' in model_name: self.model_name = 'gpt-35-turbo-16k'
             if 'gpt-4' in model_name: self.model_name = 'gpt-4'
         
-        import tiktoken
-        self.encoding = tiktoken.get_encoding("cl100k_base")
-        self.max_length = model2length[self.model_name]
+        self.max_length = int(os.environ["RULER_MAX_CONTEXT_LENGTH"]) if os.getenv("RULER_MAX_CONTEXT_LENGTH") else model2length.get(self.model_name)
+        if self.max_length is None and not self.openai_base_url:
+            raise ValueError("Set RULER_MAX_CONTEXT_LENGTH for an unknown model")
+        if self.max_length is not None:
+            import tiktoken
+            self.encoding = tiktoken.get_encoding("cl100k_base")
         self.generation_kwargs = generation_kwargs
         self._create_client()
         
@@ -231,9 +235,10 @@ class OpenAIClient:
         from openai import OpenAI, AzureOpenAI
         
         # OpenAI
-        if self.openai_api_key:
+        if self.openai_base_url or self.openai_api_key:
             self.client = OpenAI(
-                api_key=self.openai_api_key
+                api_key=self.openai_api_key or "local",
+                base_url=self.openai_base_url,
             )
 
         # Azure
@@ -247,6 +252,8 @@ class OpenAIClient:
                 api_version="2024-02-15-preview",
                 azure_endpoint=os.path.join(self.azure_api_endpoint, "llm/v1/azure"),
             )
+        else:
+            raise ValueError("Set OPENAI_API_KEY, OPENAI_BASE_URL, or Azure credentials")
         
     def _count_tokens(self, messages):
         tokens_per_message = 3
@@ -274,10 +281,9 @@ class OpenAIClient:
                 stop=request['stop'],
             )
         except Exception as e:
-            print(f"Error occurred while calling OpenAI: {e}")
-            if self.azure_api_id and self.azure_api_secret and e.status_code == 401:
-                # token expired
+            if self.azure_api_id and self.azure_api_secret and getattr(e, "status_code", None) == 401:
                 self._create_client()
+            raise
             
         return response
         
@@ -289,13 +295,14 @@ class OpenAIClient:
         system_msg = []
         user_assistant_msgs = [{"role": "user", "content": prompt}]
         msgs = system_msg + user_assistant_msgs
-        openai_length = self._count_tokens(msgs)
+        openai_length = self._count_tokens(msgs) if self.max_length is not None else 0
         request = self.generation_kwargs
         
-        tokens_to_generate_new = self.max_length - openai_length
-        if tokens_to_generate_new < request['tokens_to_generate']:
-            print(f"Reduce generate tokens from {request['tokens_to_generate']} to {tokens_to_generate_new}")
-            request['tokens_to_generate'] = tokens_to_generate_new
+        if self.max_length is not None:
+            tokens_to_generate_new = self.max_length - openai_length
+            if tokens_to_generate_new < request['tokens_to_generate']:
+                print(f"Reduce generate tokens from {request['tokens_to_generate']} to {tokens_to_generate_new}")
+                request['tokens_to_generate'] = tokens_to_generate_new
     
         request["msgs"] = msgs
         outputs = self._send_request(request)
