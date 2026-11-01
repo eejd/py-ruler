@@ -15,6 +15,12 @@
 import json
 
 
+def read_manifest(path):
+    """Read a JSON-lines manifest file into a list of dicts (blank lines skipped)."""
+    with open(path, "r", encoding="utf-8") as f:
+        return [json.loads(line) for line in f if line.strip()]
+
+
 def write_manifest(output_path, target_manifest, ensure_ascii: bool = True):
     """
     Write to manifest file

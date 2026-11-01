@@ -42,7 +42,8 @@ import time
 from tqdm import tqdm
 from pathlib import Path
 import traceback
-from nemo.collections.asr.parts.utils.manifest_utils import read_manifest
+sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "data"))
+from manifest_utils import read_manifest
 
 SERVER_TYPES = (
     'trtllm',
