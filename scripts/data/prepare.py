@@ -41,10 +41,9 @@ from template import Templates
 import nltk
 try:
     nltk.data.find('tokenizers/punkt')
-    # nltk.data.find('tokenizers/punkt_tab')
 except LookupError:
-    nltk.download('punkt')
-    nltk.download('punkt_tab')
+    raise SystemExit("NLTK 'punkt' tokenizer data not found; install it into a directory on "
+                     "NLTK_DATA (this fork never downloads it).")
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--save_dir", type=Path, required=True, help='dataset folder to save dataset')
