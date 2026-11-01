@@ -15,4 +15,4 @@ def test_evaluate_scores_known_answers(tmp_path):
     subprocess.run([sys.executable, str(script), "--data_dir", str(tmp_path), "--benchmark", "synthetic"],
                    check=True, capture_output=True)
     summary = (tmp_path / "summary-niah_single_1.csv").read_text().splitlines()
-    assert summary[1].split(",")[1] == "50.0"
+    assert summary[2].split(",")[1] == "50.0"
