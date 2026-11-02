@@ -244,12 +244,14 @@ def main():
     def get_output(idx_list, index_list, input_list, outputs_list, others_list, truncation_list, length_list):
         nonlocal llm
 
-        while True:
+        for attempt in range(3):
             try:
                 pred_list = llm.process_batch(prompts=input_list)
                 break
-            except Exception as e:
+            except Exception:
                 traceback.print_exc()
+                if attempt == 2:
+                    raise
 
         zipped_iter = zip(pred_list, idx_list, index_list, input_list,
                           outputs_list, others_list, truncation_list, length_list)

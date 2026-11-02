@@ -34,6 +34,7 @@ def test_openai_local_without_azure_credentials(monkeypatch):
         client = OpenAIClient('local-model', tokens_to_generate=5, temperature=0,
                               random_seed=1, top_p=1, stop=[])
         assert client('answer?') == {'text': ['42']}
+        assert client.process_batch(['a', 'b']) == [{'text': ['42']}, {'text': ['42']}]
         assert requests[0][0] == '/v1/chat/completions'
         assert requests[0][1]['model'] == 'local-model'
         assert requests[0][1]['messages'][0]['content'] == 'answer?'
