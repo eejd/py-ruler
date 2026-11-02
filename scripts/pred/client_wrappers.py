@@ -186,6 +186,8 @@ class SGLClient(Client):
 
 
 class OpenAIClient:
+    process_batch = Client.process_batch
+
     def __init__(
         self,
         model_name,
@@ -347,6 +349,8 @@ class OpenAIClient:
 
 
 class GeminiClient:
+    process_batch = Client.process_batch
+
     def __init__(
         self,
         model_name,
