@@ -12,7 +12,7 @@ SCRIPT = Path(__file__).with_name("prepare.py")
 def test_prepare_fails_loudly_on_generator_error(tmp_path):
     try:
         nltk.data.find("tokenizers/punkt")
-    except LookupError:
+    except (LookupError, OSError):
         pytest.skip("NLTK punkt data not installed")
     # An unloadable tokenizer makes the generator subprocess fail; prepare must not exit 0.
     proc = subprocess.run(
